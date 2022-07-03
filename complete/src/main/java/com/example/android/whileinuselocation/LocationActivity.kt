@@ -16,20 +16,28 @@
 package com.example.android.whileinuselocation
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
+import android.text.format.Formatter
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.*
+import com.example.android.whileinuselocation.RetrofitHeper.RestApiService
 import com.example.android.whileinuselocation.data.LocationRepository
+import com.example.android.whileinuselocation.model.LocationElement
+import com.example.android.whileinuselocation.model.PostElement
+import com.example.android.whileinuselocation.model.WiFiElement
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.launchIn
@@ -37,7 +45,7 @@ import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
 
-private const val TAG = "MainActivity"
+private const val TAG = "LocationActivity"
 private const val REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE = 34
 
 /**
@@ -82,7 +90,7 @@ private const val REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE = 34
  * notification. This dismisses the notification and stops the service.
  */
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+class LocationActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     private var foregroundOnlyLocationServiceBound = false
 
     // Provides location updates for while-in-use feature.
@@ -116,7 +124,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_location)
 
         sharedPreferences =
             getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
@@ -149,6 +157,27 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
             .onEach {
                 if (it.isNotEmpty()) {
                     logResultsToScreen("Foreground location: ${it[it.size - 1].toText()}")
+                    val wifiElement=rewind()
+                    val location=it[it.size-1]
+                    val latitude=location.latitude
+                    val longitude=location.longitude
+                    val locationElement=LocationElement(latitude,longitude)
+                    val postElement=PostElement(wifiElement.linkSpeed,wifiElement.frequency
+                        ,wifiElement.RSSI,wifiElement.SSID,wifiElement.BSSID,
+                        locationElement.latitude,locationElement.longitude)
+                    val apiService= RestApiService()
+                    apiService.setContext(this@LocationActivity)
+                    apiService.addWifiData(postElement){
+                        if(it==true)
+                        {
+                            Toast.makeText(this@LocationActivity, "Am primit cu succes de la server", Toast.LENGTH_LONG).show()
+                            //println("AM PRIMIT DE LA SERVER")
+                        }
+                        else
+                        {
+                            Toast.makeText(this@LocationActivity,"Eroare", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
             .launchIn(lifecycleScope)
@@ -210,7 +239,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
                 .setAction(R.string.ok) {
                     // Request permission
                     ActivityCompat.requestPermissions(
-                        this@MainActivity,
+                        this@LocationActivity,
                         arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                         REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
                     )
@@ -219,7 +248,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         } else {
             Log.d(TAG, "Request foreground only permission")
             ActivityCompat.requestPermissions(
-                this@MainActivity,
+                this@LocationActivity,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
             )
@@ -283,5 +312,22 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     private fun logResultsToScreen(output: String) {
         val outputWithPreviousLogs = "$output\n${outputTextView.text}"
         outputTextView.text = outputWithPreviousLogs
+
+    }
+    @SuppressLint("SetTextI18n")
+    fun rewind(): WiFiElement
+    {
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wInfo = wifiManager.connectionInfo
+        //val ipAddress = Formatter.formatIpAddress(wInfo.ipAddress)
+        val linkSpeed = wInfo.linkSpeed
+        val ssid = wInfo.ssid
+        val bssid = wInfo.bssid
+        val rssi = wInfo.rssi
+        val freq = wInfo.frequency
+
+
+        val toSend= WiFiElement(linkSpeed,freq,rssi,ssid,bssid)
+        return toSend
     }
 }

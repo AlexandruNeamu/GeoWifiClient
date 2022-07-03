@@ -15,6 +15,7 @@
  */
 package com.example.android.whileinuselocation
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -23,15 +24,21 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.location.Location
+import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.example.android.whileinuselocation.RetrofitHeper.RestApiService
 import com.example.android.whileinuselocation.data.LocationRepository
+import com.example.android.whileinuselocation.model.LocationElement
+import com.example.android.whileinuselocation.model.PostElement
+import com.example.android.whileinuselocation.model.WiFiElement
 import com.google.android.gms.location.*
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -104,11 +111,11 @@ class ForegroundOnlyLocationService : LifecycleService() {
 
             // Sets the fastest rate for active location updates. This interval is exact, and your
             // application will never receive updates more frequently than this value.
-            fastestInterval = TimeUnit.SECONDS.toMillis(1)
+            fastestInterval = TimeUnit.SECONDS.toMillis(10)
 
             // Sets the maximum time when batched location updates are delivered. Updates may be
             // delivered sooner than this interval.
-            maxWaitTime = TimeUnit.SECONDS.toMillis(1)
+            maxWaitTime = TimeUnit.SECONDS.toMillis(10)
 
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
@@ -124,6 +131,27 @@ class ForegroundOnlyLocationService : LifecycleService() {
                 currentLocation.toLocation()?.let {
                     lifecycleScope.launch {
                         repository.updateLocation(it)
+                        val wifiElement=rewind()
+                        val location=it
+                        val latitude=location.latitude
+                        val longitude=location.longitude
+                        val locationElement= LocationElement(latitude,longitude)
+                        val postElement= PostElement(wifiElement.linkSpeed,wifiElement.frequency
+                            ,wifiElement.RSSI,wifiElement.SSID,wifiElement.BSSID,
+                            locationElement.latitude,locationElement.longitude)
+                        val apiService= RestApiService()
+                        apiService.setContext(this@ForegroundOnlyLocationService)
+                        apiService.addWifiData(postElement){
+                            if(it==true)
+                            {
+                                Toast.makeText(this@ForegroundOnlyLocationService, "Am primit cu succes de la server", Toast.LENGTH_LONG).show()
+                                //println("AM PRIMIT DE LA SERVER")
+                            }
+                            else
+                            {
+                                Toast.makeText(this@ForegroundOnlyLocationService,"Eroare", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 }
 
@@ -278,8 +306,9 @@ class ForegroundOnlyLocationService : LifecycleService() {
             .bigText(mainNotificationText)
             .setBigContentTitle(titleText)
 
+
         // 3. Set up main Intent/Pending Intents for notification.
-        val launchActivityIntent = Intent(this, MainActivity::class.java)
+        val launchActivityIntent = Intent(this, LocationActivity::class.java)
 
         val cancelIntent = Intent(this, ForegroundOnlyLocationService::class.java)
         cancelIntent.putExtra(EXTRA_CANCEL_LOCATION_TRACKING_FROM_NOTIFICATION, true)
@@ -335,5 +364,20 @@ class ForegroundOnlyLocationService : LifecycleService() {
         private const val NOTIFICATION_ID = 12345678
 
         private const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
+    }
+
+    fun rewind(): WiFiElement
+    {
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wInfo = wifiManager.connectionInfo
+        //val ipAddress = Formatter.formatIpAddress(wInfo.ipAddress)
+        val linkSpeed = wInfo.linkSpeed
+        val ssid = wInfo.ssid
+        val bssid = wInfo.bssid
+        val rssi = wInfo.rssi
+        val freq = wInfo.frequency
+
+        val toSend= WiFiElement(linkSpeed,freq,rssi,ssid,bssid)
+        return toSend
     }
 }
