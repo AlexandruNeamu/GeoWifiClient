@@ -45,6 +45,7 @@ fun android.location.Location?.toLocation(): Location? {
     }
 }
 
+
 /**
  * Returns the `location` object as a human readable string.
  */

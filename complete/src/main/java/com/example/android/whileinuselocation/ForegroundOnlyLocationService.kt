@@ -24,6 +24,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.location.Location
+import android.net.wifi.SupplicantState
 import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
@@ -36,6 +37,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.example.android.whileinuselocation.RetrofitHeper.RestApiService
 import com.example.android.whileinuselocation.data.LocationRepository
+import com.example.android.whileinuselocation.data.ResultsRepository
 import com.example.android.whileinuselocation.model.LocationElement
 import com.example.android.whileinuselocation.model.PostElement
 import com.example.android.whileinuselocation.model.WiFiElement
@@ -86,6 +88,8 @@ class ForegroundOnlyLocationService : LifecycleService() {
     // Data store (in this case, Room database) where the service will persist the location data, injected via Hilt
     @Inject
     lateinit var repository: LocationRepository
+    @Inject
+    lateinit var repositoryResults:ResultsRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -139,7 +143,7 @@ class ForegroundOnlyLocationService : LifecycleService() {
                         val postElement= PostElement(wifiElement.linkSpeed,wifiElement.frequency
                             ,wifiElement.RSSI,wifiElement.SSID,wifiElement.BSSID,
                             locationElement.latitude,locationElement.longitude)
-                        val apiService= RestApiService()
+                        val apiService= RestApiService(repositoryResults, applicationContext)
                         apiService.setContext(this@ForegroundOnlyLocationService)
                         apiService.addWifiData(postElement){
                             if(it==true)
@@ -371,11 +375,29 @@ class ForegroundOnlyLocationService : LifecycleService() {
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val wInfo = wifiManager.connectionInfo
         //val ipAddress = Formatter.formatIpAddress(wInfo.ipAddress)
-        val linkSpeed = wInfo.linkSpeed
-        val ssid = wInfo.ssid
-        val bssid = wInfo.bssid
-        val rssi = wInfo.rssi
-        val freq = wInfo.frequency
+        var linkSpeed = 0
+        var ssid = "WiFiStudenti"
+        var bssid = "02:00:00:00:00:00"
+        var rssi = -127
+        var freq = -1
+        val supplicantState=wInfo.supplicantState
+        if(!supplicantState.equals(SupplicantState.COMPLETED))
+        {
+            linkSpeed = 0
+            ssid = "WiFiStudenti"
+            bssid = "02:00:00:00:00:00"
+            rssi = -127
+            freq = -1
+        }
+        //val ipAddress = Formatter.formatIpAddress(wInfo.ipAddress)
+        else
+        {
+            linkSpeed = wInfo.linkSpeed
+            ssid = wInfo.ssid
+            bssid = wInfo.bssid
+            rssi = wInfo.rssi
+            freq = wInfo.frequency
+        }
 
         val toSend= WiFiElement(linkSpeed,freq,rssi,ssid,bssid)
         return toSend

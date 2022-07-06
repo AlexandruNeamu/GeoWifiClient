@@ -35,4 +35,5 @@
 
     <string name="latitudeBabel">Latitude</string>
     <string name="longitudeBabel">Longitude</string>
+    <string name="title_activity_maps">MapsActivity</string>
 </resources>

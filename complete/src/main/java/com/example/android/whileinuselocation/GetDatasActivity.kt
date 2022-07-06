@@ -22,17 +22,22 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.example.android.whileinuselocation.RetrofitHeper.RestApiService
+import com.example.android.whileinuselocation.data.ResultsRepository
 import com.example.android.whileinuselocation.model.LocationElement
 import com.example.android.whileinuselocation.model.PostElement
 import com.example.android.whileinuselocation.model.WiFiElement
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import javax.inject.Inject
 
 class GetDatasActivity : AppCompatActivity() {
     lateinit var updateButton: Button
     lateinit var sendButton: Button
     lateinit var handler: Handler
     lateinit var elemToSend:PostElement
+    @Inject
+    lateinit var repositoryResults: ResultsRepository
+
 
     private var fusedLocationClient: FusedLocationProviderClient? = null
     private var lastLocation: Location? = null
@@ -40,6 +45,7 @@ class GetDatasActivity : AppCompatActivity() {
     private var longitudeLabel: String? = null
     private var latitudeText: TextView? = null
     private var longitudeText: TextView? = null
+
     companion object {
         private val TAG = "LocationProvider"
         private val REQUEST_PERMISSIONS_REQUEST_CODE = 34
@@ -214,19 +220,8 @@ class GetDatasActivity : AppCompatActivity() {
             }
             R.id.buttonSendWifiInfo->
             {
-//                println(elemToSend)
-//                val wifielem = PostElement(
-//                    linkSpeed = 39,
-//                    frequency =2447,
-//                    RSSI=-30,
-//                    SSID="a",
-//                    BSSID= "02: 00: 00: 00: 00: 00",
-//                    latitude = 44.432432432432435,
-//                    longitude = 44.432432432432435
-//                )
 
-
-                val apiService= RestApiService()
+                val apiService= RestApiService(repositoryResults,applicationContext)
                 apiService.setContext(this@GetDatasActivity)
                 apiService.addWifiData(elemToSend){
                     if(it==true)

@@ -26,4 +26,5 @@ object DataModule {
     fun provideDao(database: LocationDatabase): LocationDao {
         return database.locationDao()
     }
+
 }
