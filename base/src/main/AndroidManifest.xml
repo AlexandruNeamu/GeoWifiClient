@@ -20,7 +20,6 @@
     <!-- Required for foreground services on P+. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    <!-- TODO: Step 1.0, Review Permissions: Specify permissions you are using. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <application

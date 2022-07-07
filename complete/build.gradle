@@ -5,7 +5,7 @@ apply plugin: 'dagger.hilt.android.plugin'
 
 
 android {
-    // TODO: Step 2.1, Target Android 10 and then Android 11.
+    // Target Android 10 and then Android 11.
     compileSdkVersion 30
     defaultConfig {
         applicationId "com.example.android.whileinuselocation"
